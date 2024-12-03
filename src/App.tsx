@@ -182,7 +182,7 @@ function App() {
                         Last Seen: {filteredTelemetry[filteredTelemetry.length - 1]?.timestamp ? moment(filteredTelemetry[filteredTelemetry.length - 1].timestamp).fromNow() : "N/A"}
                       </div>
                       <div className="flex items-center justify-between">
-                        <Badge variant={device?.status === "connected" ? "success" : "destructive"}>
+                        <Badge variant={device?.status === "connected" ? "default" : "destructive"}>
                           {device?.status ? device?.status.charAt(0).toUpperCase() + String(device?.status).slice(1) : "Unknown"}
                         </Badge>
                         <Button variant="destructive" size="sm" onClick={(e) => { e.stopPropagation(); deleteDevice(device.device_id); }}>
