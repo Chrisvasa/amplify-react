@@ -3,105 +3,103 @@ import type { Handler } from 'aws-lambda';
 const GRAPHQL_ENDPOINT = process.env.API_ENDPOINT as string;
 const GRAPHQL_API_KEY = process.env.API_KEY as string;
 
-/**
- * @type {import('@types/aws-lambda').APIGatewayProxyHandler}
- */
-export const handler: Handler = async (event, context) => {
+export const handler: Handler = async (event) => {
     console.log(`EVENT: ${JSON.stringify(event)}`);
-
-    let statusCode = 200;
-    let response;
-    let responseBody;
-    let request;
 
     const headers = {
         'x-api-key': GRAPHQL_API_KEY,
         'Content-Type': 'application/json'
-    }
+    };
 
-    /** @type {import('node-fetch').RequestInit} */
+    const payload = event; // Anta att detta innehåller device_id, temperature, humidity, timestamp
 
-    // Get owner from deviceID
-    request = new Request(GRAPHQL_ENDPOINT, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-            query: `query MyQuery {
-                        getDevices(device_id: "${event.device_id}") {
-                            device_id
-                            owner
-                        }
-                        }
-                `})
-    });
-
-    console.log("request:", request)
-
-    try {
-        response = await fetch(request);
-        responseBody = await response.json();
-
-        console.log("responseBody:", responseBody)
-        if (responseBody.errors) statusCode = 400;
-    } catch (error) {
-        statusCode = 400;
-        responseBody = {
-            errors: [
-                {
-                    status: response?.status,
-                    error: JSON.stringify(error),
-                }
-            ]
+    if (!payload.device_id || payload.temperature == null || payload.humidity == null || !payload.timestamp) {
+        return {
+            statusCode: 400,
+            body: JSON.stringify({ error: "Invalid telemetry data" }),
         };
     }
 
-    if (responseBody.data.getDevices?.owner) {
-        // Mutate
-        request = new Request(GRAPHQL_ENDPOINT, {
+    // Hämta ägare för device_id
+    let owner: string | undefined;
+    try {
+        const request = new Request(GRAPHQL_ENDPOINT, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({
-                query: `mutation MyMutation {
+                query: `query GetDeviceOwner {
+                    getDevices(device_id: "${payload.device_id}") {
+                        owner
+                    }
+                }`
+            }),
+        });
+
+        const response = await fetch(request);
+        const responseBody = await response.json();
+        owner = responseBody.data.getDevices?.owner;
+
+        if (!owner) {
+            throw new Error(`No owner found for device_id: ${payload.device_id}`);
+        }
+    } catch (error) {
+        console.error("Error fetching owner:", error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: "Failed to fetch owner" }),
+        };
+    }
+
+    // Skapa telemetridata
+    const timestamp = new Date().toISOString();
+
+    try {
+        const mutationRequest = new Request(GRAPHQL_ENDPOINT, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+                query: `mutation CreateTelemetry {
                     createTelemetry(input: {
-                        device_id: "${event.device_id}", 
-                        temperature: ${event.temperature}, 
-                        owner: "${responseBody.data.getDevices.owner}", 
-                        humidity: ${event.humidity}, 
-                        timestamp: ${event.timestamp}
-                        }) 
-                    {
+                        device_id: "${payload.device_id}",
+                        temperature: ${payload.temperature},
+                        humidity: ${payload.humidity},
+                        timestamp: ${payload.timestamp},
+                        owner: "${owner}",
+                        createdAt: "${timestamp}",
+                        updatedAt: "${timestamp}"
+                    }) {
+                        device_id
                         temperature
                         humidity
+                        timestamp
                         owner
                         createdAt
                         updatedAt
-                        device_id
-                        timestamp
                     }
-                }
-                `})
+                }`
+            }),
         });
 
-        try {
-            response = await fetch(request);
-            responseBody = await response.json();
-            if (responseBody.errors) statusCode = 400;
-        } catch (error) {
-            statusCode = 400;
-            responseBody = {
-                errors: [
-                    {
-                        status: response?.status,
-                        error: JSON.stringify(error),
-                    }
-                ]
+        const response = await fetch(mutationRequest);
+        const responseBody = await response.json();
+
+        if (responseBody.errors) {
+            console.error("GraphQL errors:", responseBody.errors);
+            return {
+                statusCode: 400,
+                body: JSON.stringify(responseBody.errors),
             };
         }
+
+        return {
+            statusCode: 200,
+            body: JSON.stringify(responseBody.data.createTelemetry),
+        };
+    } catch (error) {
+        console.error("Error creating telemetry:", error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: "Failed to create telemetry" }),
+        };
     }
-
-    return {
-        statusCode,
-        body: JSON.stringify(responseBody)
-    };
-
 };

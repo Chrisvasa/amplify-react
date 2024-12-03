@@ -1,25 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Schema } from "../amplify/data/resource";
 import { generateClient } from "aws-amplify/data";
-
-import {
-  Badge,
-  Button,
-  Card,
-  Collection,
-  Divider,
-  Flex,
-  Heading,
-  //Table,
-  //TableCell,
-  //TableBody,
-  //TableHead,
-  //TableRow,
-  useAuthenticator,
-  View
-} from '@aws-amplify/ui-react';
+import { useAuthenticator } from '@aws-amplify/ui-react';
 import moment from "moment";
-
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -31,6 +14,12 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 ChartJS.register(
   CategoryScale,
@@ -47,6 +36,7 @@ const client = generateClient<Schema>();
 function App() {
   const [telemetries, setTelemetry] = useState<Array<Schema["telemetry"]["type"]>>([]);
   const [devices, setDevices] = useState<Array<Schema["devices"]["type"]>>([]);
+  const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
 
   const { user, signOut } = useAuthenticator();
 
@@ -56,49 +46,47 @@ function App() {
     });
 
     client.models.devices.observeQuery().subscribe({
-      next: (data) => { setDevices([...data.items]) },
+      next: (data) => { 
+        setDevices([...data.items]);
+        if (!selectedDevice && data.items.length > 0) {
+          setSelectedDevice(data.items[0].device_id);
+        }
+      },
     });
-
   }, []);
-
 
   function createDevice() {
     const device = String(window.prompt("Device ID"));
-    client.models.devices.create({ device_id: device, owner: user.userId })
+    if (device) {
+      client.models.devices.create({ device_id: device, owner: user.userId });
+    }
   }
 
   function deleteDevice(device_id: string) {
-    client.models.devices.delete({ device_id })
-  }
-
-
-  function deleteTelemetry(device_id: string, timestamp: number) {
-    client.models.telemetry.delete({ device_id, timestamp })
+    client.models.devices.delete({ device_id });
+    if (selectedDevice === device_id) {
+      setSelectedDevice(devices.find(d => d.device_id !== device_id)?.device_id || null);
+    }
   }
 
   function createTelemetry() {
-    const temperature = Math.random() * (30 - 20) + 20;
-    const humidity = Math.random() * (90 - 40) + 40;
+    if (selectedDevice) {
+      const temperature = Math.random() * (30 - 20) + 20;
+      const humidity = Math.random() * (90 - 40) + 40;
 
-    client.models.telemetry.create({
-      device_id: "1234",
-      timestamp: new Date().getTime(),
-      temperature: temperature,
-      humidity: humidity,
-      owner: user.userId,
-    });
+      client.models.telemetry.create({
+        device_id: selectedDevice,
+        timestamp: new Date().getTime(),
+        temperature: temperature,
+        humidity: humidity,
+        owner: user.userId,
+      });
+    }
   }
 
+  const filteredTelemetry = telemetries.filter(t => t.device_id === selectedDevice);
+
   const chartOptions = {
-
-    onClick: function (evt: any, element: string | any[]) {
-      evt;
-      if (element.length > 0) {
-        var ind = element[0].index;
-        deleteTelemetry(telemetries[ind].device_id, telemetries[ind].timestamp)
-      }
-    },
-
     responsive: true,
     interaction: {
       mode: 'index' as const,
@@ -108,7 +96,7 @@ function App() {
     plugins: {
       title: {
         display: true,
-        text: telemetries[0]?.device_id ? telemetries[0].device_id : "",
+        text: selectedDevice ? `Device: ${selectedDevice}` : "No device selected",
       },
     },
     scales: {
@@ -116,160 +104,117 @@ function App() {
         type: 'linear' as const,
         display: true,
         position: 'left' as const,
+        title: {
+          display: true,
+          text: 'Temperature (°C)',
+        },
       },
       y1: {
         type: 'linear' as const,
         display: true,
         position: 'right' as const,
-      }
+        title: {
+          display: true,
+          text: 'Humidity (%)',
+        },
+        grid: {
+          drawOnChartArea: false,
+        },
+      },
     },
   };
 
-
-  const cartData = {
-    labels: telemetries.map((data) => {
-      return moment(data?.timestamp).format("HH:mm:ss");
-    }),
+  const chartData = {
+    labels: filteredTelemetry.map((data) => moment(data?.timestamp).format("HH:mm:ss")),
     datasets: [
       {
         label: 'Temperature',
-        data: telemetries.map((data) => {
-          return data?.temperature;
-        }),
+        data: filteredTelemetry.map((data) => data?.temperature),
         borderColor: 'rgb(255, 99, 132)',
         backgroundColor: 'rgba(255, 99, 132, 0.5)',
         yAxisID: 'y',
       },
       {
         label: 'Humidity',
-        data: telemetries.map((data) => {
-          return data?.humidity;
-        }),
-        borderColor: 'rgb(99, 255, 132)',
-        backgroundColor: 'rgba(99, 255, 132, 0.5)',
+        data: filteredTelemetry.map((data) => data?.humidity),
+        borderColor: 'rgb(53, 162, 235)',
+        backgroundColor: 'rgba(53, 162, 235, 0.5)',
         yAxisID: 'y1',
-      }
+      },
     ],
   };
 
   return (
-    <main>
-      <Heading
-        width='30vw'
-        level={5} >
-        User: {user?.signInDetails?.loginId}
-      </Heading>
-      <Heading
-        width='30vw'
-        level={5} >
-        Temperature: {telemetries[telemetries.length - 1]?.temperature}
-      </Heading>
-      <Heading
-        width='30vw'
-        level={5} >
-        Humidity: {telemetries[telemetries.length - 1]?.humidity}
-      </Heading>
+    <div className="container mx-auto p-4">
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Sensor Dashboard</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4">
+            <div>User: {user?.signInDetails?.loginId}</div>
+            <div>Temperature: {filteredTelemetry[filteredTelemetry.length - 1]?.temperature?.toFixed(2)}°C</div>
+            <div>Humidity: {filteredTelemetry[filteredTelemetry.length - 1]?.humidity?.toFixed(2)}%</div>
+          </div>
+        </CardContent>
+      </Card>
 
+      <div className="grid md:grid-cols-2 gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Devices</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={createDevice} className="mb-4">Add Device</Button>
+            <ScrollArea className="h-[400px] pr-4">
+              <div className="space-y-4">
+                {devices.map((device) => (
+                  <Card 
+                    key={device.device_id} 
+                    className={`cursor-pointer transition-colors ${selectedDevice === device.device_id ? 'bg-primary/10' : ''}`}
+                    onClick={() => setSelectedDevice(device.device_id)}
+                  >
+                    <CardHeader>
+                      <CardTitle className="text-sm">ID: {device.device_id}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-xs mb-2">
+                        Last Seen: {filteredTelemetry[filteredTelemetry.length - 1]?.timestamp ? moment(filteredTelemetry[filteredTelemetry.length - 1].timestamp).fromNow() : "N/A"}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Badge variant={device?.status === "connected" ? "success" : "destructive"}>
+                          {device?.status ? device?.status.charAt(0).toUpperCase() + String(device?.status).slice(1) : "Unknown"}
+                        </Badge>
+                        <Button variant="destructive" size="sm" onClick={(e) => { e.stopPropagation(); deleteDevice(device.device_id); }}>
+                          Delete
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
 
-      <Divider padding="xs" />
-      <h3>Devices</h3>
-      {
-        <Button
-          variation="primary"
-          loadingText=""
-          onClick={createDevice}
-        >
-          Add Device
-        </Button>
-      }
-      <Divider padding="xs" />
+        <Card>
+          <CardHeader>
+            <CardTitle>Telemetry</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={createTelemetry} className="mb-4" disabled={!selectedDevice}>Create new Telemetry record</Button>
+            <div className="w-full h-[400px]">
+              <Line options={chartOptions} data={chartData} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Collection
-        items={devices}
-        type="list"
-        direction="row"
-        gap="20px"
-        wrap="nowrap"
-      >
-        {(item, index) => (
-          <Card
-            key={index}
-            borderRadius="medium"
-            maxWidth="20rem"
-            variation="outlined"
-          >
-            <View padding="xs">
-              <Flex>
-                Last Seen: {telemetries[telemetries.length - 1]?.timestamp ? moment(telemetries[telemetries.length - 1].timestamp).fromNow() : ""}
-              </Flex>
-              <Flex>
-                Status:
-                <Badge variation={(item?.status == "connected") ? "success" : "error"} key={item.device_id}>
-                  {item?.status ? item?.status.charAt(0).toUpperCase() + String(item?.status).slice(1) : ""}
-                </Badge>
-              </Flex>
-              <Divider padding="xs" />
-              <Heading padding="medium">ID: {item.device_id}</Heading>
-              <Button variation="destructive" isFullWidth onClick={() => deleteDevice(item.device_id)}>
-                Delete
-              </Button>
-            </View>
-          </Card>
-        )}
-      </Collection>
-
-      <Divider padding="xs" />
-      <h3>Telemetry</h3>
-      {
-        <Button
-          variation="primary"
-          loadingText=""
-          onClick={createTelemetry}
-        >
-          Create new Telemetry record
-        </Button>
-      }
-
-      {/*
-      <Table
-        caption="Telemetries"
-        highlightOnHover={true}
-        variation="striped">
-        <TableHead>
-          <TableRow>
-            <TableCell as="th">Device ID</TableCell>
-            <TableCell as="th">Temperature</TableCell>
-            <TableCell as="th">Humidity</TableCell>
-            <TableCell as="th">Delete</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {telemetries.map((tel, index) => (
-            <TableRow key={index}>
-              <TableCell>{tel.device_id}</TableCell>
-              <TableCell>{tel?.temperature}</TableCell>
-              <TableCell>{tel?.humidity}</TableCell>
-              <TableCell>
-                <Button
-                  variation="primary"
-                  colorTheme="error"
-                  onClick={() => deleteTelemetry(tel.device_id, tel.timestamp)}
-                >
-                  Delete
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      */}
-
-      <Line options={chartOptions} data={cartData}></Line>
-
-      <Divider padding="xs" />
-      <button onClick={signOut}>Sign out</button>
-    </main >
+      <Separator className="my-4" />
+      <Button variant="outline" onClick={signOut}>Sign out</Button>
+    </div>
   );
 }
 
 export default App;
+
