@@ -4,6 +4,8 @@ This project bridges IoT hardware with a cloud-powered web application hosted on
 An **ESP32 microcontroller** equipped with a **DHT11 sensor** collects temperature and humidity data and sends it via **MQTT** to **AWS IoT Core**. A message rule in IoT Core triggers an **AWS Lambda function**, which processes the data by associating it with an owner before storing it in **Amazon DynamoDB**. The data is then accessed and visualized on a **React+Vite** frontend using **GraphQL APIs** powered by **AWS AppSync**
 ## Overview
 ![image](https://github.com/user-attachments/assets/6ed0a6a6-070d-4f72-8f63-bcaa629924bb)
+![image](https://github.com/user-attachments/assets/fa43baa6-39be-4096-9c6b-fa8c3f0aada0)
+
 
 
 ## 🌐 Architecture Overview
