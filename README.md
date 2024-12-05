@@ -1,25 +1,78 @@
-## AWS Amplify React+Vite Starter Template
-
-This repository provides a starter template for creating applications using React+Vite and AWS Amplify, emphasizing easy setup for authentication, API, and database capabilities.
-
+# AWS Amplify React+Vite with ESP32 IoT Integration
 ## Overview
+![image](https://github.com/user-attachments/assets/4a073f0f-576a-4549-8416-0aaa1a7d22c2)
 
-This template equips you with a foundational React application integrated with AWS Amplify, streamlined for scalability and performance. It is ideal for developers looking to jumpstart their project with pre-configured AWS services like Cognito, AppSync, and DynamoDB.
+## 🌐 Architecture Overview
 
-## Features
+1. The ESP32 collects temperature and humidity data using the DHT11 sensor.
+2. Data is published via MQTT to AWS IoT Core.
+3. IoT Core forwards the data to an AWS Lambda function for processing.
+4. The Lambda function updates the DynamoDB database in real time.
+5. The React frontend fetches and displays this data using AWS AppSync's GraphQL APIs.
 
-- **Authentication**: Setup with Amazon Cognito for secure user authentication.
-- **API**: Ready-to-use GraphQL endpoint with AWS AppSync.
-- **Database**: Real-time database powered by Amazon DynamoDB.
+## Requirements
+### Hardware
+- ESP32
+- DHT11 sensor
+- Cables and wires to connect everything
+- Breadboard
+### Software
+- AWS
+  - IoT Core
+  - DynamoDB
+  - Lambda
+  - Amplify
+- Node.js
+- PlatformIO (For the ESP32)
 
-## Deploying to AWS
 
-For detailed instructions on deploying your application, refer to the [deployment section](https://docs.amplify.aws/react/start/quickstart/#deploy-a-fullstack-app-to-aws) of our documentation.
+## 🛠️ Usage
+Clone the repository.
+```bash
+git clone https://github.com/Chrisvasa/amplify-react.git
+```
+### Frontend
+1. Navigate to the `src/` directory and install dependencies:
+```bash
+   cd frontend
+   npm install
+   npm run dev
+```
+2. Modify the `App.tsx` and `App.css` files to customize your UI. 
+### Backend
+1. Navigate to the `amplify/` directory for backend setup:
+```bash
+    cd amplify
+```
+2. Deploy backend resources:
+```bash
+    amplify init
+    amplify push
+```
+3. Functions
+- The Lambda function logic resides in the `functions/` subfolder. Modify files such as `handler.ts` to customize the data processing logic.
+4. Resources
+  - IoT and authentication configurations are managed in the `auth/` folder. Use the provided `resources.ts` file for detailed configuration.
+### AWS IoT Core Setup
+1. Ensure that the ESP32 device is configured with MQTT and the required IoT Core certificates.
+2. Publish sensor data to the MQTT topic defined in the `resource.ts` configuration.
 
-## Security
+### Running the Application
+After setting up both the frontend and backend:
+1. Access the web application via the development server or the deployed AWS Amplify hosting.
+2. Monitor the real-time data updates from the ESP32 sensors on the frontend.
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+## 🛡️ Security
 
-## License
+This project follows best practices for secure IoT communication and AWS integration:
+- Certificate-based authentication for IoT devices.
+- Secure APIs with AWS Cognito and fine-grained IAM roles.
+- Encrypted data storage in DynamoDB.
 
-This library is licensed under the MIT-0 License. See the LICENSE file.
+## 📝 License
+
+This project is licensed under the [MIT-0 License](LICENSE).
+
+## 🤝 Contributing
+
+Contributions are welcome! See the [CONTRIBUTING](CONTRIBUTING.md) guide for more information.
