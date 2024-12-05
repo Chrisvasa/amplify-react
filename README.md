@@ -38,7 +38,7 @@ git clone https://github.com/Chrisvasa/amplify-react.git
 ### Frontend
 1. Navigate to the `src/` directory and install dependencies:
 ```bash
-   cd frontend
+   cd src
    npm install
    npm run dev
 ```
