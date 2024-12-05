@@ -66,13 +66,6 @@ After setting up both the frontend and backend:
 1. Access the web application via the development server or the deployed AWS Amplify hosting.
 2. Monitor the real-time data updates from the ESP32 sensors on the frontend.
 
-## 🛡️ Security
-
-This project follows best practices for secure IoT communication and AWS integration:
-- Certificate-based authentication for IoT devices.
-- Secure APIs with AWS Cognito and fine-grained IAM roles.
-- Encrypted data storage in DynamoDB.
-
 ## 📝 License
 
 This project is licensed under the [MIT-0 License](LICENSE).
