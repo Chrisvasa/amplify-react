@@ -19,7 +19,7 @@ An **ESP32 microcontroller** equipped with a **DHT11 sensor** collects temperatu
 - DHT11 sensor
 - Cables and wires to connect everything
 - Breadboard
-- [IoT Firmware Repository](https://https://github.com/Chrisvasa/esp_aws): ESP32 firmware for sensor data collection and AWS IoT integration.
+- [IoT Firmware Repository](https://github.com/Chrisvasa/esp_aws): ESP32 firmware for sensor data collection and AWS IoT integration.
 ### Software
 - AWS
   - IoT Core
